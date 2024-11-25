@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# IntelliJ/WebStorm IDE files
+.idea/
+
+# Miscellaneous configuration files
+*.mjs
+package-lock.json
+package.json
