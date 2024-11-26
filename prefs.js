@@ -36,11 +36,15 @@ export default class GlaunchPreferences extends ExtensionPreferences {
 			icon_name: 'dialog-information-symbolic',
 		});
 
+
+		// label for the group appears on top of the bax
 		const group = new Adw.PreferencesGroup({
 			title: 'Appearance',
 			description: 'Configure the appearance of the extension',
 		});
 
+
+		// text inside the row
 		const row = new Adw.ActionRow({
 			title: 'Show Indicator',
 			subtitle: 'Whether to show the panel indicator',
