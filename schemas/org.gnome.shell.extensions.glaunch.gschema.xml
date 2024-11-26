@@ -2,9 +2,17 @@
 <schemalist>
 
   <schema id="org.gnome.shell.extensions.glaunch" path="/org/gnome/shell/extensions/glaunch/">
+
     <key name="show-indicator" type="b">
       <default>true</default>
     </key>
+
+    <key name="shortcut" type="as">
+        <default><![CDATA[['']]]></default>
+        <summary>Launch Shortcut</summary>
+        <description>Keyboard shortcut to launch the application</description>
+    </key>
+
   </schema>
 
 </schemalist>
