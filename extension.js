@@ -1,56 +1,98 @@
-/* extension.js
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
-import GObject from 'gi://GObject';
-import St from 'gi://St';
-
-import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
-import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-
+import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const Indicator = GObject.registerClass(
-	class Indicator extends PanelMenu.Button {
-		_init() {
-			super._init(0.0, _('My Shiny Indicator'));
+export default class Glaunch extends Extension {
 
-			this.add_child(new St.Icon({
-				icon_name: 'face-smile-symbolic',
-				style_class: 'system-status-icon',
-			}));
-
-			let item = new PopupMenu.PopupMenuItem(_('Show Notification'));
-			item.connect('activate', () => {
-				Main.notify(_('Whatʼs up, folks?'));
-			});
-			this.menu.addMenuItem(item);
-		}
-	});
-
-export default class IndicatorExampleExtension extends Extension {
 	enable() {
-		this._indicator = new Indicator();
-		Main.panel.addToStatusArea(this.uuid, this._indicator);
+		try {
+			this._settings = this.getSettings();
+			this._bindKeys();
+		} catch (error) {
+			console.error("Failed to enable glaunch:", error);
+		}
+	}
+
+
+	_launchApp(command) {
+		let app = Gio.AppInfo.create_from_commandline("firefox", null, Gio.AppInfoCreateFlags.NONE);
+		app.launch([], null)
+	}
+
+	_centerMouseOnWindow(metaWindow) {
+		let rect = metaWindow.get_frame_rect();
+
+		// Calculate center point
+		let x = rect.x + rect.width / 2;
+		let y = rect.y + rect.height / 2;
+
+		// Move pointer to center
+		let seat = Clutter.get_default_backend().get_default_seat();
+		let device = seat.get_pointer();
+		seat.warp_pointer(x, y);
+	}
+
+	//let's just take the name, and not the id for now
+	_launchOrSwitchApp(appName) {
+
+		// if the list has the appName, take that id
+		let windows = global.get_window_actors();
+		let targetWindow = windows.find(w => {
+			let metaWindow = w.get_meta_window();
+			return metaWindow.get_wm_class_instance() === appName;
+		});
+
+		//if the id is not null, switch to the app
+		if (targetWindow) {
+			let metaWindow = targetWindow.get_meta_window();
+			metaWindow.activate(global.get_current_time());
+			this._centerMouseOnWindow(metaWindow);
+			return;
+		}
+		//if it is, launch the app
+		const app = Gio.AppInfo.create_from_commandline(appName, null, Gio.AppInfoCreateFlags.NONE);
+		app.launch([], null);
+	}
+
+
+	_bindKeys() {
+		Main.wm.addKeybinding(
+			'launch-browser',
+			this._settings,
+			Meta.KeyBindingFlags.NONE,
+			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+			() => this._launchOrSwitchApp("vivaldi-stable")
+		);
+
+		Main.wm.addKeybinding(
+			'launch-terminal',
+			this._settings,
+			Meta.KeyBindingFlags.NONE,
+			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+			() => this._launchOrSwitchApp("kitty")
+		);
+
+		Main.wm.addKeybinding(
+			'launch-emacs',
+			this._settings,
+			Meta.KeyBindingFlags.NONE,
+			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+			() => this._launchOrSwitchApp("emacs")
+		);
 	}
 
 	disable() {
-		this._indicator.destroy();
-		this._indicator = null;
+		Main.wm.removeKeybinding('launch-terminal');
+		Main.wm.removeKeybinding('launch-browser');
+		Main.wm.removeKeybinding('launch-emacs');
+
+		if (this._settings) {
+			this._settings.run_dispose();
+			this._settings = null;
+		}
 	}
 }

@@ -3,3 +3,13 @@
 /.idea/modules.xml
 /.idea/vcs.xml
 /.idea/workspace.xml
+
+/types/
+/types/*
+
+/node_modules/
+/node_modules/*
+
+package-lock.json
+package.json
+tsconfig.json

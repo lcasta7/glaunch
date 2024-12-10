@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-
   <schema id="org.gnome.shell.extensions.glaunch" path="/org/gnome/shell/extensions/glaunch/">
-
     <key name="show-indicator" type="b">
       <default>true</default>
     </key>
 
-    <key name="shortcut" type="as">
-        <default><![CDATA[['']]]></default>
-        <summary>Launch Shortcut</summary>
-        <description>Keyboard shortcut to launch the application</description>
+    <key name="launch-terminal" type="as">
+	  <default><![CDATA[['F2']]]></default>
+      <summary>Terminal Launch Shortcut</summary>
+      <description>Keyboard shortcut to launch terminal</description>
+    </key>
+    <key name="launch-browser" type="as">
+	  <default><![CDATA[['F9']]]></default>
+      <summary>Browser Launch Shortcut</summary>
+      <description>Keyboard shortcut to launch browser</description>
+    </key>
+    <key name="launch-emacs" type="as">
+	  <default><![CDATA[['F10']]]></default>
+      <summary>Browser Launch Shortcut</summary>
+      <description>Keyboard shortcut to launch browser</description>
     </key>
 
   </schema>
-
 </schemalist>
