@@ -18,11 +18,6 @@ export default class Glaunch extends Extension {
 	}
 
 
-	_launchApp(command) {
-		let app = Gio.AppInfo.create_from_commandline("firefox", null, Gio.AppInfoCreateFlags.NONE);
-		app.launch([], null)
-	}
-
 	_centerMouseOnWindow(metaWindow) {
 		let rect = metaWindow.get_frame_rect();
 
@@ -32,7 +27,6 @@ export default class Glaunch extends Extension {
 
 		// Move pointer to center
 		let seat = Clutter.get_default_backend().get_default_seat();
-		let device = seat.get_pointer();
 		seat.warp_pointer(x, y);
 	}
 
@@ -82,6 +76,14 @@ export default class Glaunch extends Extension {
 			Meta.KeyBindingFlags.NONE,
 			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
 			() => this._launchOrSwitchApp("emacs")
+		);
+
+		Main.wm.addKeybinding(
+			'launch-obsidian',
+			this._settings,
+			Meta.KeyBindingFlags.NONE,
+			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+			() => this._launchOrSwitchApp("obsidian")
 		);
 	}
 

@@ -17,9 +17,13 @@
     </key>
     <key name="launch-emacs" type="as">
 	  <default><![CDATA[['F10']]]></default>
-      <summary>Browser Launch Shortcut</summary>
+      <summary>Emacs Launch Shortcut</summary>
       <description>Keyboard shortcut to launch browser</description>
     </key>
-
+    <key name="launch-obsidian" type="as">
+	  <default><![CDATA[['F3']]]></default>
+      <summary>Obsidian Launch Shortcut</summary>
+      <description>Keyboard shortcut to launch browser</description>
+    </key>
   </schema>
 </schemalist>
