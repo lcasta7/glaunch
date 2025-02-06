@@ -20,10 +20,18 @@
       <summary>Emacs Launch Shortcut</summary>
       <description>Keyboard shortcut to launch browser</description>
     </key>
+
     <key name="launch-obsidian" type="as">
 	  <default><![CDATA[['F3']]]></default>
       <summary>Obsidian Launch Shortcut</summary>
       <description>Keyboard shortcut to launch browser</description>
     </key>
+
+    <key name="launch-other" type="as">
+	  <default><![CDATA[['F12']]]></default>
+      <summary>Other Launch Shortcut</summary>
+      <description>Keyboard shortcut to launch browser</description>
+    </key>
+
   </schema>
 </schemalist>
