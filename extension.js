@@ -17,7 +17,7 @@ export default class Glaunch extends Extension {
 	enable() {
 		try {
 			this._settings = this.getSettings();
-			this._apps = new Map();
+			this._apps = this._getCurrentlyOpenedApps();
 			this._boundedApps = new Set(["vivaldi-stable", "kitty", "emacs", "obsidian"]);
 			this._bindKeys();
 
@@ -37,6 +37,30 @@ export default class Glaunch extends Extension {
 		} catch (error) {
 			console.error("Failed to enable glaunch:", error);
 		}
+	}
+
+	_getCurrentlyOpenedApps() {
+		let openedAppsMap = new Map();
+		let openedApps = global.display.get_tab_list(Meta.TabList.NORMAL, null)
+
+		openedApps.forEach(appInstance => {
+			let appName = appInstance.get_wm_class_instance()
+
+			if (!appName) {
+				return
+			}
+
+			if (openedAppsMap.has(appName)) {
+				let appCollection = openedAppsMap.get(appName)
+				appCollection.list.push(appInstance)
+				appCollection.index = ++appCollection.index % appCollection.list.length
+
+			} else {
+				openedAppsMap.set(appName, new AppCollection(appInstance))
+			}
+		})
+
+		return openedAppsMap
 	}
 
 	_centerMouseOnWindow(metaWindow) {
@@ -118,6 +142,10 @@ export default class Glaunch extends Extension {
 
 		log(`DEBUG_MYAPP: _launch called with appName=${appName}`);
 		let focusedWindow = global.display.focus_window;
+
+		//TODO
+		log(`DEBUG_MISSING: _launchOrSwitchApp map empty for app, but instances opened`)
+
 
 		//if we're currently on the same type of app - switch
 		log(`DEBUG_MYAPP: _launch called with focusedWindow=${focusedWindow}`);
