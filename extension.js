@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -18,9 +19,11 @@ export default class Glaunch extends Extension {
 		try {
 			this._settings = this.getSettings();
 			this._apps = this._getCurrentlyOpenedApps();
-			this._boundedApps = new Set(["vivaldi-stable", "kitty", "emacs", "obsidian"]);
-			this._bindKeys();
 
+			this._config = this._loadConfig();
+			this._boundedApps = new Set(this._config.map((bind) => bind.app))
+
+			this._bindKeys();
 
 			global.window_manager.connect('map', (_, actor) => {
 				let metaWindow = actor.meta_window;
@@ -37,6 +40,43 @@ export default class Glaunch extends Extension {
 		} catch (error) {
 			console.error("Failed to enable glaunch:", error);
 		}
+	}
+
+	_loadConfig() {
+		const homedir = GLib.get_home_dir();
+		const file = Gio.File.new_for_path(`${homedir}/.config/glaunch/glaunch.conf`);
+
+		if (!file.query_exists(null)) {
+			return [];
+		}
+
+		const [success, contents] = file.load_contents(null);
+		if (!success) {
+			return [];
+		}
+
+		const decoder = new TextDecoder('utf-8');
+		const configText = decoder.decode(contents);
+
+		const lines = configText.split('\n');
+		let config = [];
+
+		lines.forEach(line => {
+			if (line.trim() === '' || line.trim().startsWith('#'))
+				return;
+
+			if (line.startsWith('app_launch')) {
+				const parts = line.split(/\s+/);
+				if (parts.length >= 3) {
+					config.push({
+						key: parts[1],
+						app: parts[2]
+					});
+				}
+			}
+		});
+
+		return config;
 	}
 
 	_getCurrentlyOpenedApps() {
@@ -181,59 +221,21 @@ export default class Glaunch extends Extension {
 
 
 	_bindKeys() {
-
-		// f9
-		Main.wm.addKeybinding(
-			'launch-browser',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("vivaldi-stable")
-		);
-
-		// f2
-		Main.wm.addKeybinding(
-			'launch-terminal',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("kitty")
-		);
-
-		// f10
-		Main.wm.addKeybinding(
-			'launch-emacs',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("emacs")
-		);
-
-		// f3
-		Main.wm.addKeybinding(
-			'launch-obsidian',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("obsidian")
-		);
-
-		// f4
-		Main.wm.addKeybinding(
-			'launch-other',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("other")
-		);
+		this._config.forEach((bind, _) => {
+			Main.wm.addKeybinding(
+				bind.key,
+				this._settings,
+				Meta.KeyBindingFlags.NONE,
+				Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+				() => this._launchOrSwitchApp(bind.app)
+			);
+		})
 	}
 
 	disable() {
-		Main.wm.removeKeybinding('launch-terminal');
-		Main.wm.removeKeybinding('launch-browser');
-		Main.wm.removeKeybinding('launch-emacs');
-		Main.wm.removeKeybinding('launch-obsidian');
-		Main.wm.removeKeybinding('launch-other');
+		this._config.forEach((bind, _) => {
+			Main.wm.removeKeybinding(bind.key);
+		})
 
 		if (this._settings) {
 			this._settings.run_dispose();
