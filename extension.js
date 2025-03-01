@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -18,24 +19,88 @@ export default class Glaunch extends Extension {
 		try {
 			this._settings = this.getSettings();
 			this._apps = this._getCurrentlyOpenedApps();
-			this._boundedApps = new Set(["vivaldi-stable", "kitty", "emacs", "obsidian"]);
-			this._bindKeys();
 
+			this._config = this._loadConfig();
+			this._boundedApps = new Set(this._config.map((bind) => bind.app))
+
+			this._bindKeys();
 
 			global.window_manager.connect('map', (_, actor) => {
 				let metaWindow = actor.meta_window;
 				this._storeApp(metaWindow);
 			});
 
-
 			global.window_manager.connect('destroy', (_, actor) => {
 				let metaWindow = actor.meta_window;
 				this._cleanApp(metaWindow)
 			});
 
-
 		} catch (error) {
 			console.error("Failed to enable glaunch:", error);
+		}
+	}
+
+	_loadConfig() {
+		const homedir = GLib.get_home_dir();
+		const configDir = `${homedir}/.config/glaunch`;
+		const file = Gio.File.new_for_path(`${configDir}/glaunch.conf`);
+
+
+		try {
+			if (!file.query_exists(null)) {
+				//make the directory
+				const dir = Gio.File.new_for_path(configDir);
+				if (!dir.query_exists(null)) {
+					dir.make_directory_with_parents(null);
+				}
+
+				//create the file
+				const outputStream = file.create(Gio.FileCreateFlags.NONE, null);
+
+
+				//write a sample in it
+				const bytes = new GLib.Bytes('app_launch f9 firefox');
+				outputStream.write_bytes(bytes, null);
+				outputStream.close(null);
+			}
+
+		} catch (e) {
+			logError(e, "Error Creating config file")
+			return []
+		}
+
+
+		try {
+			const [success, contents] = file.load_contents(null);
+			if (!success) {
+				return [];
+			}
+
+			const decoder = new TextDecoder('utf-8');
+			const configText = decoder.decode(contents);
+
+			const lines = configText.split('\n');
+			let config = [];
+
+			lines.forEach(line => {
+				if (line.trim() === '' || line.trim().startsWith('#'))
+					return;
+
+				if (line.startsWith('app_launch')) {
+					const parts = line.split(/\s+/);
+					if (parts.length >= 3) {
+						config.push({
+							key: parts[1],
+							app: parts[2]
+						});
+					}
+				}
+			});
+
+			return config;
+		} catch (e) {
+			logError(e, "Error Reading config file")
+			return []
 		}
 	}
 
@@ -140,22 +205,22 @@ export default class Glaunch extends Extension {
 
 	_launchOrSwitchApp(appName) {
 
-		log(`DEBUG_MYAPP: _launch called with appName=${appName}`);
-		let focusedWindow = global.display.focus_window;
+		log(`DEBUG_MYAPP: _launch called with appName=${appName}`)
+		let focusedWindow = global.display.focus_window
 
 		//TODO
 		log(`DEBUG_MISSING: _launchOrSwitchApp map empty for app, but instances opened`)
 
 
 		//if we're currently on the same type of app - switch
-		log(`DEBUG_MYAPP: _launch called with focusedWindow=${focusedWindow}`);
+		log(`DEBUG_MYAPP: _launch called with focusedWindow=${focusedWindow}`)
 		if (focusedWindow
 			&& (focusedWindow.get_wm_class_instance() === appName
 				|| !this._boundedApps.has(focusedWindow.get_wm_class_instance()))
 			&& this._apps.has(appName)
 			&& this._apps.get(appName).list.length > 1) {
 
-			log('DEBUG_MYAPP: _launch switching between apps');
+			log('DEBUG_MYAPP: _launch switching between apps')
 			let appCollection = this._apps.get(appName)
 			appCollection.index = ++appCollection.index % appCollection.list.length
 
@@ -163,81 +228,43 @@ export default class Glaunch extends Extension {
 			this._focusWindow(nextWindow)
 		} else if (this._apps.has(appName)) { //switch to the app
 
-			log('DEBUG_MYAPP: _launch switching to app');
+			log('DEBUG_MYAPP: _launch switching to app')
 			let appCollection = this._apps.get(appName)
 			let index = appCollection.index % appCollection.list.length
 
-			log(`DEBUG_MYAPP: _launch switching to app index=${index}`);
+			log(`DEBUG_MYAPP: _launch switching to app index=${index}`)
 
 			let currentWindow = appCollection.list[index]
 			this._focusWindow(currentWindow)
 		} else { //launch app
-			log('DEBUG_MYAPP: _launch launching app');
+			log('DEBUG_MYAPP: _launch launching app')
 			this._apps.set()
-			const app = Gio.AppInfo.create_from_commandline(appName, null, Gio.AppInfoCreateFlags.NONE);
-			app.launch([], null);
+			const app = Gio.AppInfo.create_from_commandline(appName, null, Gio.AppInfoCreateFlags.NONE)
+			app.launch([], null)
 		}
 	}
 
 
 	_bindKeys() {
-
-		// f9
-		Main.wm.addKeybinding(
-			'launch-browser',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("vivaldi-stable")
-		);
-
-		// f2
-		Main.wm.addKeybinding(
-			'launch-terminal',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("kitty")
-		);
-
-		// f10
-		Main.wm.addKeybinding(
-			'launch-emacs',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("emacs")
-		);
-
-		// f3
-		Main.wm.addKeybinding(
-			'launch-obsidian',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("obsidian")
-		);
-
-		// f4
-		Main.wm.addKeybinding(
-			'launch-other',
-			this._settings,
-			Meta.KeyBindingFlags.NONE,
-			Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-			() => this._launchOrSwitchApp("other")
-		);
+		this._config.forEach((bind, _) => {
+			Main.wm.addKeybinding(
+				bind.key,
+				this._settings,
+				Meta.KeyBindingFlags.NONE,
+				Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+				() => this._launchOrSwitchApp(bind.app)
+			)
+		})
 	}
 
 	disable() {
-		Main.wm.removeKeybinding('launch-terminal');
-		Main.wm.removeKeybinding('launch-browser');
-		Main.wm.removeKeybinding('launch-emacs');
-		Main.wm.removeKeybinding('launch-obsidian');
-		Main.wm.removeKeybinding('launch-other');
+		this._config.forEach((bind, _) => {
+			Main.wm.removeKeybinding(bind.key)
+		})
 
 		if (this._settings) {
-			this._settings.run_dispose();
-			this._settings = null;
+			this._settings.run_dispose()
+			this._settings = null
 		}
 	}
 }
