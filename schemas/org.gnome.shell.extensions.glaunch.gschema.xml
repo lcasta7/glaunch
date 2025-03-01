@@ -1,37 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.glaunch" path="/org/gnome/shell/extensions/glaunch/">
-    <key name="show-indicator" type="b">
-      <default>true</default>
-    </key>
-
-    <key name="launch-terminal" type="as">
+    <key name="f2" type="as">
 	  <default><![CDATA[['F2']]]></default>
-      <summary>Terminal Launch Shortcut</summary>
-      <description>Keyboard shortcut to launch terminal</description>
     </key>
-    <key name="launch-browser" type="as">
-	  <default><![CDATA[['F9']]]></default>
-      <summary>Browser Launch Shortcut</summary>
-      <description>Keyboard shortcut to launch browser</description>
-    </key>
-    <key name="launch-emacs" type="as">
-	  <default><![CDATA[['F10']]]></default>
-      <summary>Emacs Launch Shortcut</summary>
-      <description>Keyboard shortcut to launch browser</description>
-    </key>
-
-    <key name="launch-obsidian" type="as">
+    <key name="f3" type="as">
 	  <default><![CDATA[['F3']]]></default>
-      <summary>Obsidian Launch Shortcut</summary>
-      <description>Keyboard shortcut to launch browser</description>
     </key>
-
-    <key name="launch-other" type="as">
+    <key name="f9" type="as">
+	  <default><![CDATA[['F9']]]></default>
+    </key>
+    <key name="f10" type="as">
+	  <default><![CDATA[['F10']]]></default>
+    </key>
+    <key name="f11" type="as">
+	  <default><![CDATA[['F11']]]></default>
+    </key>
+    <key name="f12" type="as">
 	  <default><![CDATA[['F12']]]></default>
-      <summary>Other Launch Shortcut</summary>
-      <description>Keyboard shortcut to launch browser</description>
     </key>
-
   </schema>
 </schemalist>
