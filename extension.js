@@ -107,9 +107,8 @@ export default class Glaunch extends Extension {
 			this._bindKeys();
 
 			this._boundedApps = new Set(this._config.map((bind) => bind.app))
-			this.appmap = new Map()
+			this._appMap = this._getCurrentlyOpenedApps();
 
-			this._apps = this._getCurrentlyOpenedApps();
 			global.window_manager.connect('map', (_, actor) => {
 				let metaWindow = actor.meta_window;
 				this._storeApp(metaWindow);
@@ -211,7 +210,7 @@ export default class Glaunch extends Extension {
 				appCollection.index = ++appCollection.index % appCollection.list.length
 
 			} else {
-				openedAppsMap.set(appName, new AppCollection(appInstance))
+				openedAppsMap.set(appName, new Apps(appInstance))
 			}
 		})
 
@@ -229,11 +228,11 @@ export default class Glaunch extends Extension {
 		}
 
 		if (PathApp.shouldHandle(metaWindow)) {
-			if (this.appmap.has(appName)) {
-				let appCol = this.appmap.get(appName)
+			if (this._appMap.has(appName)) {
+				let appCol = this._appMap.get(appName)
 				appCol.insert(metaWindow)
 			} else {
-				this.appmap.set(appName, new Apps(metaWindow))
+				this._appMap.set(appName, new Apps(metaWindow))
 			}
 		}
 	}
@@ -246,12 +245,12 @@ export default class Glaunch extends Extension {
 			appName = "other";
 		}
 
-		if (this.appmap.has(appName)) {
-			let appCol = this.appmap.get(appName);
+		if (this._appMap.has(appName)) {
+			let appCol = this._appMap.get(appName);
 			appCol.deleteWin(metaWindow)
 
 			if (appCol.list.length === 0) {
-				this.appmap.delete(appName);
+				this._appMap.delete(appName);
 			}
 		}
 	}
@@ -262,10 +261,10 @@ export default class Glaunch extends Extension {
 		let focusedAppName = focusedWindow ? focusedWindow.get_wm_class_instance() : null;
 
 		if (focusedAppName === appName
-			&& this.appmap.has(appName)) {
-			this.appmap.get(appName).goNext()
-		} else if (this.appmap.has(appName)) {
-			this.appmap.get(appName).switchToApp()
+			&& this._appMap.has(appName)) {
+			this._appMap.get(appName).goNext()
+		} else if (this._appMap.has(appName)) {
+			this._appMap.get(appName).switchToApp()
 		} else {
 			const app = Gio.AppInfo.create_from_commandline(appName,
 				null,
@@ -280,10 +279,10 @@ export default class Glaunch extends Extension {
 
 		//we're in bounded so we need to switch to other
 		if (this._boundedApps.has(focusedAppName)) {
-			this.appmap.get(appName).switchToApp()
+			this._appMap.get(appName).switchToApp()
 		}//we're already in "other"
 		else {
-			this.appmap.get(appName).goNext()
+			this._appMap.get(appName).goNext()
 		}
 
 	}
