@@ -6,10 +6,88 @@ import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-class AppCollection {
+class Apps {
 	constructor(item) {
-		this.index = 0;
-		this.list = [item];
+		this.head = item
+		this.list = [item]
+		this.#focusWin()
+	}
+
+	goNext() {
+		let headIndex = this.list.indexOf(this.head)
+		this.head = this.list[++headIndex % this.list.length]
+		this.#focusWin()
+	}
+
+	insert(win) {
+		this.list.push(win)
+		this.head = win
+		this.#focusWin()
+	}
+
+	switchToApp() {
+		this.#focusWin()
+	}
+
+	deleteWin(metaWindow) {
+		const index = this.list.findIndex(win => win === metaWindow)
+		if (index === -1) return;
+
+		if (this.head === metaWindow && this.list.length > 1) {
+			this.goNext();
+		}
+
+
+		this.list.splice(index, 1)
+
+		if (this.list.length === 0) {
+			this.head = null;
+		} else if (this.head === metaWindow) {
+			this.head = this.list[0];
+		}
+	}
+
+	#focusWin() {
+		this.head.activate(global.get_current_time())
+		this.#centerMouseOnWindow(this.head)
+	}
+
+	#centerMouseOnWindow(metaWindow) {
+		let rect = metaWindow.get_frame_rect();
+
+		// Calculate center point
+		let x = rect.x + rect.width / 2;
+		let y = rect.y + rect.height / 2;
+
+		// Move pointer to center
+		let seat = Clutter.get_default_backend().get_default_seat();
+		seat.warp_pointer(x, y);
+	}
+}
+
+class App {
+	static shouldHandle(win) {
+		throw new Error("shouldHandle method must be implemented by subclass");
+	}
+}
+
+class PathApp extends App {
+	static shouldHandle(win) {
+		let appName = win.get_wm_class_instance();
+		if (appName) {
+			return true
+		}
+		return false
+	}
+}
+
+class OtherApp extends App {
+	static shouldHandle(win, boundedApps) {
+		let appName = win.get_wm_class_instance();
+		if (boundedApps.has(appName)) {
+			return false
+		}
+		return true
 	}
 }
 
@@ -18,12 +96,11 @@ export default class Glaunch extends Extension {
 	enable() {
 		try {
 			this._settings = this.getSettings();
-			this._apps = this._getCurrentlyOpenedApps();
-
 			this._config = this._loadConfig();
-			this._boundedApps = new Set(this._config.map((bind) => bind.app))
-
 			this._bindKeys();
+
+			this._boundedApps = new Set(this._config.map((bind) => bind.app))
+			this._appMap = this._getCurrentlyOpenedApps();
 
 			global.window_manager.connect('map', (_, actor) => {
 				let metaWindow = actor.meta_window;
@@ -83,17 +160,17 @@ export default class Glaunch extends Extension {
 			let config = [];
 
 			lines.forEach(line => {
-				if (line.trim() === '' || line.trim().startsWith('#'))
+				if (line.trim() === '' || line.trim().startsWith('#')) {
 					return;
-
-				if (line.startsWith('app_launch')) {
-					const parts = line.split(/\s+/);
-					if (parts.length >= 3) {
-						config.push({
-							key: parts[1],
-							app: parts[2]
-						});
-					}
+				}
+				//start
+				const parts = line.split(/\s+/);
+				if (parts.length >= 3) {
+					config.push({
+						com: parts[0],
+						key: parts[1],
+						app: parts[2]
+					});
 				}
 			});
 
@@ -115,145 +192,113 @@ export default class Glaunch extends Extension {
 				return
 			}
 
+			if (!this._boundedApps.has(appName)) {
+				appName = "other"
+			}
+
+
 			if (openedAppsMap.has(appName)) {
 				let appCollection = openedAppsMap.get(appName)
 				appCollection.list.push(appInstance)
 				appCollection.index = ++appCollection.index % appCollection.list.length
 
 			} else {
-				openedAppsMap.set(appName, new AppCollection(appInstance))
+				openedAppsMap.set(appName, new Apps(appInstance))
 			}
 		})
 
 		return openedAppsMap
 	}
 
-	_centerMouseOnWindow(metaWindow) {
-		let rect = metaWindow.get_frame_rect();
-
-		// Calculate center point
-		let x = rect.x + rect.width / 2;
-		let y = rect.y + rect.height / 2;
-
-		// Move pointer to center
-		let seat = Clutter.get_default_backend().get_default_seat();
-		seat.warp_pointer(x, y);
-	}
 
 	_storeApp(metaWindow) {
 		let appName = metaWindow.get_wm_class_instance();
 		if (!appName || appName === 'gjs') return;
 		if (metaWindow.window_type !== Meta.WindowType.NORMAL) return;
 
-		if (!this._boundedApps.has(appName)) {
-			appName = "other";
+		if (OtherApp.shouldHandle(metaWindow, this._boundedApps)) {
+			appName = "other"
 		}
 
-		if (this._apps.has(appName)) {
-			let appCollection = this._apps.get(appName)
-			appCollection.list.push(metaWindow)
-			appCollection.index = ++appCollection.index % appCollection.list.length
-
-		} else {
-			this._apps.set(appName, new AppCollection(metaWindow))
+		if (PathApp.shouldHandle(metaWindow)) {
+			if (this._appMap.has(appName)) {
+				let appCol = this._appMap.get(appName)
+				appCol.insert(metaWindow)
+			} else {
+				this._appMap.set(appName, new Apps(metaWindow))
+			}
 		}
-
-		this._centerMouseOnWindow(metaWindow);
-		this._apps.forEach((value, key) => {
-			log(`[MyExtension] App: ${key}, Number of windows: ${value.list.length}`);
-			value.list.forEach((window, index) => {
-				log(`[MyExtension]   Window ${index}: ${window.get_title()}`);
-			});
-		});
 	}
 
 	_cleanApp(metaWindow) {
-		log('DEBUG_MYAPP: _cleanApp called');
 		let appName = metaWindow.get_wm_class_instance();
 
-		log(`[MyExtension] cleaning ${appName}`);
 		if (!appName) return;
-
 		if (!this._boundedApps.has(appName)) {
 			appName = "other";
 		}
 
-		if (this._apps.has(appName)) {
-			let appCollection = this._apps.get(appName);
-			// Remove this specific window from the list
-			appCollection.list = appCollection.list.filter(win => win !== metaWindow);
+		if (this._appMap.has(appName)) {
+			let appCol = this._appMap.get(appName);
+			appCol.deleteWin(metaWindow)
 
-			// If no windows left for this app, remove the app entry entirely
-			if (appCollection.list.length === 0) {
-				this._apps.delete(appName);
+			if (appCol.list.length === 0) {
+				this._appMap.delete(appName);
 			}
-
-			// Log the current state for debugging
-			this._apps.forEach((value, key) => {
-				log(`[MyExtension] App: ${key}, Number of windows: ${value.list.length}`);
-				value.list.forEach((window, index) => {
-					log(`[MyExtension]   Window ${index}: ${window.get_title()}`);
-				});
-			});
 		}
 	}
 
-	_focusWindow(window) {
-		window.activate(global.get_current_time())
-		this._centerMouseOnWindow(window)
-	}
+	// what happens when it's other?
+	_handleApp(appName) {
+		let focusedWindow = global.display.focus_window;
+		let focusedAppName = focusedWindow ? focusedWindow.get_wm_class_instance() : null;
 
-	_launchOrSwitchApp(appName) {
-
-		log(`DEBUG_MYAPP: _launch called with appName=${appName}`)
-		let focusedWindow = global.display.focus_window
-
-		//TODO
-		log(`DEBUG_MISSING: _launchOrSwitchApp map empty for app, but instances opened`)
-
-
-		//if we're currently on the same type of app - switch
-		log(`DEBUG_MYAPP: _launch called with focusedWindow=${focusedWindow}`)
-		if (focusedWindow
-			&& (focusedWindow.get_wm_class_instance() === appName
-				|| !this._boundedApps.has(focusedWindow.get_wm_class_instance()))
-			&& this._apps.has(appName)
-			&& this._apps.get(appName).list.length > 1) {
-
-			log('DEBUG_MYAPP: _launch switching between apps')
-			let appCollection = this._apps.get(appName)
-			appCollection.index = ++appCollection.index % appCollection.list.length
-
-			let nextWindow = appCollection.list[appCollection.index]
-			this._focusWindow(nextWindow)
-		} else if (this._apps.has(appName)) { //switch to the app
-
-			log('DEBUG_MYAPP: _launch switching to app')
-			let appCollection = this._apps.get(appName)
-			let index = appCollection.index % appCollection.list.length
-
-			log(`DEBUG_MYAPP: _launch switching to app index=${index}`)
-
-			let currentWindow = appCollection.list[index]
-			this._focusWindow(currentWindow)
-		} else { //launch app
-			log('DEBUG_MYAPP: _launch launching app')
-			this._apps.set()
-			const app = Gio.AppInfo.create_from_commandline(appName, null, Gio.AppInfoCreateFlags.NONE)
+		if (focusedAppName === appName
+			&& this._appMap.has(appName)) {
+			this._appMap.get(appName).goNext()
+		} else if (this._appMap.has(appName)) {
+			this._appMap.get(appName).switchToApp()
+		} else {
+			const app = Gio.AppInfo.create_from_commandline(appName,
+				null,
+				Gio.AppInfoCreateFlags.NONE)
 			app.launch([], null)
 		}
 	}
 
+	_handleOther(appName) {
+		let focusedWindow = global.display.focus_window;
+		let focusedAppName = focusedWindow ? focusedWindow.get_wm_class_instance() : null;
+
+		//we're in bounded so we need to switch to other
+		if (this._boundedApps.has(focusedAppName)) {
+			this._appMap.get(appName).switchToApp()
+		}//we're already in "other"
+		else {
+			this._appMap.get(appName).goNext()
+		}
+
+	}
 
 	_bindKeys() {
 		this._config.forEach((bind, _) => {
-			Main.wm.addKeybinding(
-				bind.key,
-				this._settings,
-				Meta.KeyBindingFlags.NONE,
-				Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-				() => this._launchOrSwitchApp(bind.app)
-			)
+			if (bind.com == "app_launch_path") {
+				Main.wm.addKeybinding(
+					bind.key,
+					this._settings,
+					Meta.KeyBindingFlags.NONE,
+					Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+					() => this._handleApp(bind.app))
+			}
+
+			if (bind.com = "app_launch_other") {
+				Main.wm.addKeybinding(
+					bind.key,
+					this._settings,
+					Meta.KeyBindingFlags.NONE,
+					Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+					() => this._handleOther(bind.app))
+			}
 		})
 	}
 
