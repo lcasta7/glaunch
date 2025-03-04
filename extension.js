@@ -36,6 +36,24 @@ class Apps {
 		this.#focusWin()
 	}
 
+	deleteWin(metaWindow) {
+		const index = this.list.findIndex(win => win === metaWindow)
+		if (index === -1) return;
+
+		if (this.head === metaWindow && this.list.length > 1) {
+			this.goNext();
+		}
+
+
+		this.list.splice(index, 1)
+
+		if (this.list.length === 0) {
+			this.head = null;
+		} else if (this.head === metaWindow) {
+			this.head = this.list[0];
+		}
+	}
+
 	#focusWin() {
 		this.head.activate(global.get_current_time())
 		this.#centerMouseOnWindow(this.head)
@@ -206,9 +224,6 @@ export default class Glaunch extends Extension {
 		if (!appName || appName === 'gjs') return;
 		if (metaWindow.window_type !== Meta.WindowType.NORMAL) return;
 
-		//check otherApp
-		//when it's not in bounded aps, treat is as other
-
 		if (OtherApp.shouldHandle(metaWindow, this._boundedApps)) {
 			appName = "other"
 		}
@@ -224,33 +239,20 @@ export default class Glaunch extends Extension {
 	}
 
 	_cleanApp(metaWindow) {
-		log('DEBUG_MYAPP: _cleanApp called');
 		let appName = metaWindow.get_wm_class_instance();
 
-		log(`[MyExtension] cleaning ${appName}`);
 		if (!appName) return;
-
 		if (!this._boundedApps.has(appName)) {
 			appName = "other";
 		}
 
-		if (this._apps.has(appName)) {
-			let appCollection = this._apps.get(appName);
-			// Remove this specific window from the list
-			appCollection.list = appCollection.list.filter(win => win !== metaWindow);
+		if (this.appmap.has(appName)) {
+			let appCol = this.appmap.get(appName);
+			appCol.deleteWin(metaWindow)
 
-			// If no windows left for this app, remove the app entry entirely
-			if (appCollection.list.length === 0) {
-				this._apps.delete(appName);
+			if (appCol.list.length === 0) {
+				this.appmap.delete(appName);
 			}
-
-			// Log the current state for debugging
-			this._apps.forEach((value, key) => {
-				log(`[MyExtension] App: ${key}, Number of windows: ${value.list.length}`);
-				value.list.forEach((window, index) => {
-					log(`[MyExtension]   Window ${index}: ${window.get_title()}`);
-				});
-			});
 		}
 	}
 
