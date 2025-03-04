@@ -18,13 +18,12 @@ export default class Glaunch extends Extension {
 	enable() {
 		try {
 			this._settings = this.getSettings();
-			this._apps = this._getCurrentlyOpenedApps();
-
 			this._config = this._loadConfig();
-			this._boundedApps = new Set(this._config.map((bind) => bind.app))
-
 			this._bindKeys();
 
+			this._boundedApps = new Set(this._config.map((bind) => bind.app))
+
+			this._apps = this._getCurrentlyOpenedApps();
 			global.window_manager.connect('map', (_, actor) => {
 				let metaWindow = actor.meta_window;
 				this._storeApp(metaWindow);
@@ -83,9 +82,9 @@ export default class Glaunch extends Extension {
 			let config = [];
 
 			lines.forEach(line => {
-				if (line.trim() === '' || line.trim().startsWith('#'))
+				if (line.trim() === '' || line.trim().startsWith('#')) {
 					return;
-
+				}
 				if (line.startsWith('app_launch')) {
 					const parts = line.split(/\s+/);
 					if (parts.length >= 3) {
@@ -114,6 +113,12 @@ export default class Glaunch extends Extension {
 			if (!appName) {
 				return
 			}
+
+			//handle "other"
+			if (!this._boundedApps.has(appName)) {
+				appName = "other"
+			}
+
 
 			if (openedAppsMap.has(appName)) {
 				let appCollection = openedAppsMap.get(appName)
@@ -203,13 +208,18 @@ export default class Glaunch extends Extension {
 		this._centerMouseOnWindow(window)
 	}
 
+
 	_launchOrSwitchApp(appName) {
 
 		log(`DEBUG_MYAPP: _launch called with appName=${appName}`)
 		let focusedWindow = global.display.focus_window
 
 		//TODO
-		log(`DEBUG_MISSING: _launchOrSwitchApp map empty for app, but instances opened`)
+		if (appName === "other") {
+			this._handleOther(focusedWindow)
+			return
+		}
+
 
 
 		//if we're currently on the same type of app - switch
@@ -244,6 +254,24 @@ export default class Glaunch extends Extension {
 		}
 	}
 
+	_handleOther(focusedWindow) {
+		let focusedName = focusedWindow.get_wm_class_instance()
+
+		// if we're not bounded, then we're already in other
+		if (!this._boundedApps.has(focusedName)) {
+			let appCollection = this._apps.get("other")
+			appCollection.index = ++appCollection.index % appCollection.list.length
+
+			let nextWindow = appCollection.list[appCollection.index]
+			this._focusWindow(nextWindow)
+		} else { //need to switch to other
+			let appCollection = this._apps.get("other")
+			let index = appCollection.index % appCollection.list.length
+
+			let currentWindow = appCollection.list[index]
+			this._focusWindow(currentWindow)
+		}
+	}
 
 	_bindKeys() {
 		this._config.forEach((bind, _) => {
