@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-
   <schema id="org.gnome.shell.extensions.glaunch" path="/org/gnome/shell/extensions/glaunch/">
-
-    <key name="show-indicator" type="b">
-      <default>true</default>
+    <key name="f2" type="as">
+	  <default><![CDATA[['F2']]]></default>
     </key>
-
-    <key name="shortcut" type="as">
-        <default><![CDATA[['']]]></default>
-        <summary>Launch Shortcut</summary>
-        <description>Keyboard shortcut to launch the application</description>
+    <key name="f3" type="as">
+	  <default><![CDATA[['F3']]]></default>
     </key>
-
+    <key name="f9" type="as">
+	  <default><![CDATA[['F9']]]></default>
+    </key>
+    <key name="f10" type="as">
+	  <default><![CDATA[['F10']]]></default>
+    </key>
+    <key name="f11" type="as">
+	  <default><![CDATA[['F11']]]></default>
+    </key>
+    <key name="f12" type="as">
+	  <default><![CDATA[['F12']]]></default>
+    </key>
   </schema>
-
 </schemalist>
