@@ -7,6 +7,9 @@
     <key name="f3" type="as">
 	  <default><![CDATA[['F3']]]></default>
     </key>
+    <key name="f4" type="as">
+	  <default><![CDATA[['F4']]]></default>
+    </key>
     <key name="f9" type="as">
 	  <default><![CDATA[['F9']]]></default>
     </key>
@@ -19,5 +22,8 @@
     <key name="f12" type="as">
 	  <default><![CDATA[['F12']]]></default>
     </key>
+	<key name="ctrl-tab" type="as">
+	  <default><![CDATA[['<Control>Tab']]]></default>
+	</key>
   </schema>
 </schemalist>

@@ -49,10 +49,17 @@ class Apps {
 
 	#focusWin() {
 		this.head.activate(global.get_current_time())
-		this.#centerMouseOnWindow(this.head)
+		App.centerMouseOnWin(this.head)
 	}
 
-	#centerMouseOnWindow(metaWindow) {
+}
+
+class App {
+	static shouldHandle(win) {
+		throw new Error("shouldHandle method must be implemented by subclass");
+	}
+
+	static centerMouseOnWin(metaWindow) {
 		let rect = metaWindow.get_frame_rect();
 
 		// Calculate center point
@@ -62,12 +69,6 @@ class Apps {
 		// Move pointer to center
 		let seat = Clutter.get_default_backend().get_default_seat();
 		seat.warp_pointer(x, y);
-	}
-}
-
-class App {
-	static shouldHandle(win) {
-		throw new Error("shouldHandle method must be implemented by subclass");
 	}
 }
 
@@ -280,9 +281,24 @@ export default class Glaunch extends Extension {
 
 	}
 
+	_handleWinManage() {
+		// Get the MRU (most recently used) window list
+		const mruWindows = global.display.get_tab_list(Meta.TabList.NORMAL, null);
+
+		// Current window is at index 0, previous window is at index 1
+		if (mruWindows.length < 2) return; // Need at least 2 windows
+
+		// Get the previous window
+		const previousWindow = mruWindows[1];
+
+		// Activate the previous window (equivalent to one Alt+Tab press)
+		previousWindow.activate(global.get_current_time());
+		App.centerMouseOnWin(previousWindow)
+	}
+
 	_bindKeys() {
 		this._config.forEach((bind, _) => {
-			if (bind.com == "app_launch_path") {
+			if (bind.com === "app_launch_path") {
 				Main.wm.addKeybinding(
 					bind.key,
 					this._settings,
@@ -291,7 +307,7 @@ export default class Glaunch extends Extension {
 					() => this._handleApp(bind.app))
 			}
 
-			if (bind.com = "app_launch_other") {
+			if (bind.com === "app_launch_other") {
 				Main.wm.addKeybinding(
 					bind.key,
 					this._settings,
@@ -299,6 +315,16 @@ export default class Glaunch extends Extension {
 					Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
 					() => this._handleOther(bind.app))
 			}
+
+			if (bind.com === "win_manage") {
+				Main.wm.addKeybinding(
+					bind.key,
+					this._settings,
+					Meta.KeyBindingFlags.NONE,
+					Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+					() => this._handleWinManage())
+			}
+
 		})
 	}
 
