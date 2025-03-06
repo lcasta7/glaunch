@@ -249,7 +249,6 @@ export default class Glaunch extends Extension {
 		}
 	}
 
-	// what happens when it's other?
 	_handleApp(appName) {
 		let focusedWindow = global.display.focus_window;
 		let focusedAppName = focusedWindow ? focusedWindow.get_wm_class_instance() : null;
