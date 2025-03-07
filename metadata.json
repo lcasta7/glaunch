@@ -3,7 +3,8 @@
   "description": "App launch and switcher",
   "uuid": "glaunch@casta.dev",
   "shell-version": [
-    "46"
+    "46",
+    "47"
   ],
   "gettext-domain": "glaunch@casta.dev",
   "settings-schema": "org.gnome.shell.extensions.glaunch"
