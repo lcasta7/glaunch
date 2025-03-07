@@ -281,16 +281,12 @@ export default class Glaunch extends Extension {
 	}
 
 	_handleWinManage() {
-		// Get the MRU (most recently used) window list
 		const mruWindows = global.display.get_tab_list(Meta.TabList.NORMAL, null);
 
-		// Current window is at index 0, previous window is at index 1
-		if (mruWindows.length < 2) return; // Need at least 2 windows
+		if (mruWindows.length < 2) return;
 
-		// Get the previous window
 		const previousWindow = mruWindows[1];
 
-		// Activate the previous window (equivalent to one Alt+Tab press)
 		previousWindow.activate(global.get_current_time());
 		App.centerMouseOnWin(previousWindow)
 	}
