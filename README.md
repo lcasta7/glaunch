@@ -34,7 +34,7 @@ As of March 2025, glaunch is feature-complete but with some limitations:
 
 ## Sample Configuration file
 **Note**: The `app_launch_other f12 other` binding designates F12 as a special key that will cycle through all applications that are not already bound to other function keys. This is useful for accessing less frequently used applications without needing to assign individual keys to each one.
-
+```
 app_launch_path f2 kitty
 app_launch_path f3 obsidian
 app_launch_path f9 vivaldi-stable
@@ -43,3 +43,4 @@ app_launch_path f11 discord
 app_launch_other f12 other
 
 win_manage f4 previous⏎        
+```
